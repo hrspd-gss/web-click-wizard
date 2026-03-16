@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Click Wizard - 設定</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #121212;
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: #e0e0e0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #1e1e1e;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #ffffff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h1::before {
+      content: "🔐";
+    }
+
+    .subtitle {
+      color: #aaa;
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 32px;
+      padding: 24px;
+      background: #2d2d2d;
+      border-radius: 12px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: "🔑";
+    }
+
+    .section-title.token::before {
+      content: "🎫";
+    }
+
+    .section-title.settings::before {
+      content: "⚙️";
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      color: #bbb;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px;
+      background: #1e1e1e;
+      color: #fff;
+      border: 2px solid #444;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .token-display {
+      background: #000;
+      color: #4ec9b0;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      max-height: 150px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+
+    .token-display.empty {
+      color: #888;
+      font-style: italic;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-secondary {
+      background: #444;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #555;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: #333;
+    }
+
+    .btn-warning:hover {
+      background: #e0a800;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #218838;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.success {
+      background: #064e3b;
+      color: #a7f3d0;
+      border: 1px solid #047857;
+    }
+
+    .status.error {
+      background: #7f1d1d;
+      color: #fecaca;
+      border: 1px solid #b91c1c;
+    }
+
+    .status.info {
+      background: #1e3a8a;
+      color: #bfdbfe;
+      border: 1px solid #1d4ed8;
+    }
+
+    .token-list {
+      margin-top: 16px;
+    }
+
+    .token-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 16px;
+      background: #333;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 2px solid #444;
+      transition: border-color 0.3s ease;
+    }
+
+    .token-item:hover {
+      border-color: #3b82f6;
+    }
+
+    .token-item.expired {
+      opacity: 0.7;
+      border-color: #b45309;
+    }
+
+    .token-item.revoked {
+      opacity: 0.5;
+      border-color: #b91c1c;
+      background: #3f1d1d;
+    }
+
+    .token-info {
+      flex: 1;
+    }
+
+    .token-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .token-name {
+      font-weight: 600;
+      color: #fff;
+      font-size: 16px;
+    }
+
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-badge.active {
+      background: #064e3b;
+      color: #a7f3d0;
+    }
+
+    .status-badge.expired {
+      background: #78350f;
+      color: #fde68a;
+    }
+
+    .status-badge.revoked {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .token-meta {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+
+    .token-meta span {
+      margin-right: 16px;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    .token-preview {
+      margin-top: 8px;
+    }
+
+    .token-preview code {
+      background: #1e1e1e;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #ddd;
+    }
+
+    .token-actions {
+      display: flex;
+      gap: 8px;
+      flex-direction: column;
+    }
+
+    .btn-small {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toggle-switch input[type="checkbox"] {
+      width: 48px;
+      height: 24px;
+      appearance: none;
+      background: #555;
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .toggle-switch input[type="checkbox"]:checked {
+      background: #3b82f6;
+    }
+
+    .toggle-switch input[type="checkbox"]::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s ease;
+    }
+
+    .toggle-switch input[type="checkbox"]:checked::before {
+      transform: translateX(24px);
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #444;
+      margin: 24px 0;
+    }
+
+    .extension-id {
+      background: #1e1e1e;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 13px;
+      color: #ddd;
+      display: inline-block;
+      margin-top: 8px;
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 14px;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+
+    .copy-btn:hover {
+      opacity: 1;
+    }
+
+    .inline-flex {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .key-status-display {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .key-indicator {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .key-indicator.active {
+      background: #064e3b;
+      color: #a7f3d0;
+    }
+
+    .key-indicator.inactive {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+
+    /* 確認對話框樣式 */
+    .confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .confirm-dialog {
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .confirm-dialog h3 {
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .confirm-dialog p {
+      margin-bottom: 24px;
+      color: #aaa;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .confirm-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Web Click Wizard 設定</h1>
+    <p class="subtitle">管理 JWT Token 以保護工作流程執行請求</p>
+
+    <!-- 安全設定 -->
+    <div class="section">
+      <h2 class="section-title settings">安全設定</h2>
+
+      <div class="form-group">
+        <div class="toggle-switch">
+          <input type="checkbox" id="enableJwtAuth" checked>
+          <label for="enableJwtAuth">啟用 JWT 驗證</label>
+        </div>
+        <p class="help-text">啟用後，所有外部執行請求都需要提供有效的 JWT Token</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="form-group">
+        <label for="allowedIssuers">允許的 Token 發行者 (Issuers)</label>
+        <input type="text" id="allowedIssuers" placeholder="例如：https://www.gss.com.tw, my-custom-issuer">
+        <p class="help-text">設定允許的 JWT 發行者（iss 欄位），多個發行者用逗號分隔。預設為 https://www.gss.com.tw</p>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary btn-small" id="saveIssuersBtn">💾 儲存發行者設定</button>
+      </div>
+
+      <div id="issuersStatus" class="status"></div>
+
+      <div class="divider"></div>
+
+      <div class="form-group">
+        <label>Extension ID</label>
+        <div class="inline-flex">
+          <span class="extension-id" id="extensionId">載入中...</span>
+          <button class="copy-btn" id="copyExtensionId" title="複製">📋</button>
+        </div>
+        <p class="help-text">外部網頁需要使用此 ID 來連接 Extension</p>
+      </div>
+    </div>
+
+    <!-- 密鑰管理 -->
+    <div class="section">
+      <h2 class="section-title">密鑰管理</h2>
+
+      <div class="form-group">
+        <label>JWT 密鑰狀態</label>
+        <div class="key-status-display">
+          <span id="keyStatusIndicator" class="key-indicator">⚪ 尚未產生</span>
+          <button class="btn btn-primary" id="generateKeyBtn">🔄 產生新密鑰</button>
+        </div>
+        <p class="help-text">⚠️ 密鑰產生後無法查看，僅能用於簽署 Token。如遺失密鑰，請重新產生（所有舊 Token 將失效）。</p>
+      </div>
+
+      <div id="keyStatus" class="status"></div>
+    </div>
+
+    <!-- Token 產生 -->
+    <div class="section">
+      <h2 class="section-title token">產生新 Token</h2>
+
+      <div class="form-group">
+        <label for="tokenName">Token 名稱</label>
+        <input type="text" id="tokenName" placeholder="例如：開發環境、測試伺服器">
+      </div>
+
+      <div class="form-group">
+        <label for="tokenExpiry">有效期限</label>
+        <select id="tokenExpiry">
+          <option value="3600">1 小時</option>
+          <option value="86400">1 天</option>
+          <option value="604800" selected>7 天</option>
+          <option value="2592000">30 天</option>
+          <option value="31536000">1 年</option>
+          <option value="0">永不過期</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="allowedOrigins">允許的來源 (選填)</label>
+        <input type="text" id="allowedOrigins" placeholder="例如：http://localhost:3000, https://example.com">
+        <p class="help-text">限制此 Token 只能從特定來源使用，多個來源用逗號分隔</p>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-success" id="generateTokenBtn">🎫 產生 Token</button>
+      </div>
+
+      <div id="generatedToken" class="token-display empty">尚未產生 Token</div>
+
+      <div class="btn-group">
+        <button class="btn btn-secondary btn-small" id="copyTokenBtn" disabled>📋 複製 Token</button>
+      </div>
+
+      <div id="tokenStatus" class="status"></div>
+    </div>
+
+    <!-- 已產生的 Token 列表 -->
+    <div class="section">
+      <h2 class="section-title token">已產生的 Token</h2>
+
+      <div id="tokenList" class="token-list">
+        <p style="color: #666; font-style: italic;">尚無已儲存的 Token</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="jwt-utils.js"></script>
+  <script src="options.js"></script>
+</body>
+
+</html>

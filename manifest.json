@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Web Click Wizard",
+  "version": "1.0.0",
+  "description": "簡單的 RPA 工具，可讀取 workflow.json 並自動執行工作流程，支援 JWT 驗證",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage",
+    "alarms",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "dialog-inject.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "action": {
+    "default_icon": "images/icon16.png"
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "sandbox": {
+    "pages": [
+      "sandbox.html"
+    ]
+  },
+  "externally_connectable": {
+    "matches": [
+      "*://*/*"
+    ]
+  }
+}

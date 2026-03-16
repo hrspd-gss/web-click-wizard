@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Click Wizard</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 100%;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #121212;
+      padding: 16px;
+      margin: 0;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 18px;
+      color: #ffffff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1::before {
+      content: "🤖";
+    }
+
+    .section {
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      color: #a0a0a0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .file-input-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: #2d2d2d;
+      border: 2px dashed #555;
+      border-radius: 8px;
+      text-align: center;
+      color: #aaa;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .file-input-btn:hover {
+      border-color: #3b82f6;
+      background: #333;
+    }
+
+    .file-name {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #3b82f6;
+      word-break: break-all;
+    }
+
+    .variables-section {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .variable-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .variable-item label {
+      min-width: 100px;
+      font-size: 13px;
+      color: #e0e0e0;
+      font-weight: 500;
+    }
+
+    .variable-item input {
+      flex: 1;
+      padding: 8px 12px;
+      background: #2d2d2d;
+      color: #ffffff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      font-size: 13px;
+      transition: border-color 0.3s ease;
+    }
+
+    .variable-item input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.info {
+      background: #1e3a8a;
+      color: #bfdbfe;
+    }
+
+    .status.success {
+      background: #064e3b;
+      color: #a7f3d0;
+    }
+
+    .status.error {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .status.running {
+      background: #78350f;
+      color: #fde68a;
+    }
+
+    .workflow-info {
+      background: #2d2d2d;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .workflow-info-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+
+    .workflow-info-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .workflow-info-value {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .node-list {
+      max-height: 120px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    .node-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      background: #333;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: #ddd;
+    }
+
+    .node-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .node-type {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .node-type.goto {
+      background: #1e3a8a;
+      color: #bfdbfe;
+    }
+
+    .node-type.click {
+      background: #831843;
+      color: #fbcfe8;
+    }
+
+    .node-type.typeText {
+      background: #064e3b;
+      color: #a7f3d0;
+    }
+
+    .node-type.start {
+      background: #4c1d95;
+      color: #ede9fe;
+    }
+
+    .node-type.end {
+      background: #3f3f46;
+      color: #e4e4e7;
+    }
+
+    .node-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .node-item.current {
+      background: #451a03;
+      border: 1px solid #b45309;
+    }
+
+    .node-item.completed {
+      background: #064e3b;
+    }
+
+    .node-item.completed::after {
+      content: "✓";
+      color: #34d399;
+    }
+
+    /* Tabs Styling */
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #333;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 12px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      font-size: 14px;
+      color: #aaa;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin-bottom: -2px;
+      /* Overlap to hide the border-bottom from container on active */
+    }
+
+    .tab-btn:hover {
+      color: #e0e0e0;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: #3b82f6;
+      border-bottom: 2px solid #3b82f6;
+    }
+
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Selector List Styling */
+    .selector-list {
+      margin-top: 12px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .selector-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #2d2d2d;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #444;
+    }
+
+    .selector-text {
+      font-family: monospace;
+      font-size: 12px;
+      color: #e0e0e0;
+      word-break: break-all;
+      flex: 1;
+      margin-right: 12px;
+    }
+
+    .copy-btn {
+      background: #444;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #ddd;
+    }
+
+    .copy-btn:hover {
+      background: #555;
+    }
+
+    .instruction-text {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 12px;
+    }
+
+    /* Picking Mode RWD */
+    body.is-picking {
+      padding: 8px;
+    }
+
+    body.is-picking .container {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.is-picking h1,
+    body.is-picking .tabs,
+    body.is-picking .instruction-text {
+      display: none !important;
+    }
+
+    body.is-picking .selector-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    body.is-picking .status.info {
+      margin-top: 8px;
+      margin-bottom: 0px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Web Click Wizard</h1>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-target="tab-execute">執行工作流程</button>
+      <button class="tab-btn" data-target="tab-selector">選取元素</button>
+    </div>
+
+    <!-- Execute Workflow Tab -->
+    <div id="tab-execute" class="tab-content active">
+      <div class="section">
+        <div class="section-title">載入工作流程</div>
+        <div class="file-input-wrapper">
+          <div class="file-input-btn">📁 點擊選擇 workflow.json 檔案</div>
+          <input type="file" id="workflowFile" accept=".json">
+        </div>
+        <div class="file-name" id="fileName"></div>
+      </div>
+
+      <div class="workflow-info" id="workflowInfo" style="display: none;">
+        <div class="workflow-info-item">
+          <span>節點數量</span>
+          <span class="workflow-info-value" id="nodeCount">0</span>
+        </div>
+        <div class="workflow-info-item">
+          <span>連線數量</span>
+          <span class="workflow-info-value" id="edgeCount">0</span>
+        </div>
+        <div class="node-list" id="nodeList"></div>
+      </div>
+
+      <div class="section variables-section" id="variablesSection" style="display: none;">
+        <div class="section-title">變數設定</div>
+        <div id="variablesList"></div>
+      </div>
+
+      <button class="btn btn-primary" id="runBtn" disabled>
+        ▶ 執行工作流程
+      </button>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <!-- Element Selector Tab -->
+    <div id="tab-selector" class="tab-content">
+      <p class="instruction-text">啟用以下功能後，請將滑鼠移到目前網頁元素上。點擊元素即可鎖定並選擇 Selector。</p>
+
+      <button class="btn btn-primary" id="startSelectBtn">
+        🎯 啟動選取模式
+      </button>
+
+      <div class="status info" id="selectorStatus" style="display: none; margin-top: 12px; font-size: 12px;"></div>
+
+      <div class="selector-list" id="selectorList">
+        <!-- Selectors will be populated here -->
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
