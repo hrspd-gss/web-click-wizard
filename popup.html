@@ -329,6 +329,54 @@
       border-bottom: 2px solid #3b82f6;
     }
 
+    .btn-danger {
+      background: #b91c1c;
+      color: white;
+      margin-top: 12px;
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(185, 28, 28, 0.4);
+    }
+
+    .btn-danger:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .execution-status {
+      background: #2d2d2d;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .execution-status .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .execution-status .badge.idle {
+      background: #3f3f46;
+      color: #d4d4d8;
+    }
+
+    .execution-status .badge.running {
+      background: #78350f;
+      color: #fde68a;
+    }
+
+    .execution-status .workflow-info-item {
+      text-align: left;
+    }
+
     .tab-content {
       display: none;
       flex-direction: column;
@@ -422,6 +470,7 @@
 
     <div class="tabs">
       <button class="tab-btn active" data-target="tab-execute">執行工作流程</button>
+      <button class="tab-btn" data-target="tab-status">執行狀態</button>
       <button class="tab-btn" data-target="tab-selector">選取元素</button>
     </div>
 
@@ -458,6 +507,35 @@
       </button>
 
       <div class="status" id="status"></div>
+    </div>
+
+    <!-- Execution Status Tab -->
+    <div id="tab-status" class="tab-content">
+      <div class="execution-status">
+        <div class="badge idle" id="executionBadge">閒置中</div>
+        <div class="workflow-info-item">
+          <span>來源</span>
+          <span class="workflow-info-value" id="execSource">-</span>
+        </div>
+        <div class="workflow-info-item">
+          <span>節點數量</span>
+          <span class="workflow-info-value" id="execNodeCount">-</span>
+        </div>
+        <div class="workflow-info-item">
+          <span>目前節點</span>
+          <span class="workflow-info-value" id="execCurrentNode">-</span>
+        </div>
+        <div class="workflow-info-item">
+          <span>已執行時間</span>
+          <span class="workflow-info-value" id="execElapsed">-</span>
+        </div>
+      </div>
+
+      <button class="btn btn-danger" id="cancelExecutionBtn" disabled>
+        ⛔ 強制取消執行
+      </button>
+
+      <div class="status" id="execStatusMsg"></div>
     </div>
 
     <!-- Element Selector Tab -->

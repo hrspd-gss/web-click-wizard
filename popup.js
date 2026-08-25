@@ -27,6 +27,75 @@ let isPicking = false;
 let pickingTabId = null;
 let pickerPort = null;
 
+// Execution Status DOM
+const executionBadge = document.getElementById('executionBadge');
+const execSourceSpan = document.getElementById('execSource');
+const execNodeCountSpan = document.getElementById('execNodeCount');
+const execCurrentNodeSpan = document.getElementById('execCurrentNode');
+const execElapsedSpan = document.getElementById('execElapsed');
+const cancelExecutionBtn = document.getElementById('cancelExecutionBtn');
+const execStatusMsg = document.getElementById('execStatusMsg');
+let executionPollTimer = null;
+
+const SOURCE_LABELS = { popup: 'Popup', external: '外部網頁' };
+
+// 依目前執行狀態更新「執行狀態」頁籤畫面
+function renderExecutionStatus(status) {
+  if (status) {
+    executionBadge.textContent = '執行中';
+    executionBadge.classList.remove('idle');
+    executionBadge.classList.add('running');
+    execSourceSpan.textContent = SOURCE_LABELS[status.source] || status.source || '-';
+    execNodeCountSpan.textContent = status.nodeCount ?? '-';
+    execCurrentNodeSpan.textContent = status.currentNodeName || '尚未開始';
+    const elapsedSec = Math.max(0, Math.floor((Date.now() - status.startTime) / 1000));
+    execElapsedSpan.textContent = `${elapsedSec} 秒`;
+    cancelExecutionBtn.disabled = false;
+  } else {
+    executionBadge.textContent = '閒置中';
+    executionBadge.classList.remove('running');
+    executionBadge.classList.add('idle');
+    execSourceSpan.textContent = '-';
+    execNodeCountSpan.textContent = '-';
+    execCurrentNodeSpan.textContent = '-';
+    execElapsedSpan.textContent = '-';
+    cancelExecutionBtn.disabled = true;
+  }
+}
+
+// 向 background 查詢目前執行狀態
+async function refreshExecutionStatus() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getExecutionStatus' });
+    renderExecutionStatus(response?.status || null);
+  } catch (error) {
+    // background 尚未就緒或發生錯誤時忽略
+  }
+}
+
+cancelExecutionBtn.addEventListener('click', async () => {
+  cancelExecutionBtn.disabled = true;
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'cancelWorkflow' });
+    execStatusMsg.textContent = response?.cancelled ? '已送出取消請求' : '目前沒有正在執行的流程';
+    execStatusMsg.className = `status show ${response?.cancelled ? 'success' : 'info'}`;
+  } catch (error) {
+    execStatusMsg.textContent = `取消失敗: ${error.message}`;
+    execStatusMsg.className = 'status show error';
+  } finally {
+    refreshExecutionStatus();
+  }
+});
+
+// 初始載入與定時輪詢（涵蓋 popup 重新開啟時，流程可能是由外部網頁啟動的情況）
+refreshExecutionStatus();
+executionPollTimer = setInterval(refreshExecutionStatus, 1000);
+window.addEventListener('unload', () => {
+  if (executionPollTimer) {
+    clearInterval(executionPollTimer);
+  }
+});
+
 // 當彈出視窗被關閉時，如果在選取模式中，自動停止選取
 window.addEventListener('unload', () => {
   if (pickerPort) {
@@ -355,6 +424,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     startSelectBtn.classList.remove('btn-warning');
     startSelectBtn.classList.add('btn-primary');
     updateSelectorStatus('已停止選取', 'info');
+    return;
+  }
+
+  if (message.action === 'executionStatusChanged') {
+    renderExecutionStatus(message.status);
     return;
   }
 

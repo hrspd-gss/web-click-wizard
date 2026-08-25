@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Web Click Wizard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "簡單的 RPA 工具，可讀取 workflow.json 並自動執行工作流程，支援 JWT 驗證",
   "permissions": [
     "tabs",

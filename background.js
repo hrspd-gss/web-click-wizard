@@ -625,8 +625,22 @@ async function setupDialogHandling(tabId, mode = 'autoAccept') {
 
 // 執行 goto 動作 - 開新 tab
 // 新增 dialogMode 參數（'autoAccept' | 'autoDismiss' | 'reportOnly'）
-async function executeGoto(url, context, dialogMode = 'autoAccept', active = true) {
-  const tab = await chrome.tabs.create({ url, active });
+async function executeGoto(url, context, dialogMode = 'autoAccept', active = true, newwindow = false) {
+  let tab;
+
+  if (newwindow) {
+    tab = await chrome.tabs.create({ url, active });
+  } else {
+    if (context?.tabId) {
+      try {
+        tab = await chrome.tabs.update(context.tabId, { url, active });
+      } catch (e) {
+        tab = await chrome.tabs.create({ url, active });
+      }
+    } else {
+      tab = await chrome.tabs.create({ url, active });
+    }
+  }
 
   // 盡早嘗試注入 dialog 處理（在 navigation 前嘗試覆寫），提高攔截在 page 載入過程中發生的 alert/confirm 的機率
   try {
@@ -648,11 +662,13 @@ async function executeGoto(url, context, dialogMode = 'autoAccept', active = tru
   // 額外等待一下確保頁面完全載入
   await delay(500);
 
+  const finalTab = await chrome.tabs.get(tab.id);
+
   return {
     success: true,
-    tabId: tab.id,
-    url: tab.url,
-    title: tab.title
+    tabId: finalTab.id,
+    url: finalTab.url,
+    title: finalTab.title
   };
 }
 
@@ -1083,7 +1099,8 @@ async function executeNodeInner(node, context) {
           // 支援在 goto 節點設定 dialogMode（autoAccept/autoDismiss/reportOnly）
           const dialogMode = replaceVariables(params.dialogMode || 'autoAccept', variables);
           const runInBackground = params.background === true || params.background === 'true';
-          result = await executeGoto(url, context, dialogMode, !runInBackground);
+          const newWindow = params.newwindow === true || params.newwindow === 'true';
+          result = await executeGoto(url, context, dialogMode, !runInBackground, newWindow);
           // 更新上下文的 tabId
           if (result.success) {
             context.tabId = result.tabId;
@@ -1942,6 +1959,11 @@ let externalPort = null;
  * 通知 popup 和外部網頁進度更新
  */
 async function notifyProgress(currentNodeId, status, branchId = 'main') {
+  if (currentExecutionStatus) {
+    currentExecutionStatus.currentNodeId = currentNodeId;
+    currentExecutionStatus.currentNodeName = status;
+  }
+
   const message = {
     action: 'updateProgress',
     currentNodeId,
@@ -2234,9 +2256,14 @@ async function executeBranch(startNodeId, nodeMap, edges, context, visitedNodes 
 
       const subBranchResults = await Promise.all(branchPromises);
 
-      // 合併所有分支結果
+      // 合併所有分支結果，並將分支內設定的變數/節點結果彙整回目前的上下文
+      // （分支上下文是複製出來的，若不合併，分支內的 outputVariable 會遺失在最終結果之外）
       for (const subResult of subBranchResults) {
         branchResults.push(...subResult.results);
+        if (subResult.context) {
+          Object.assign(context.variables, subResult.context.variables);
+          Object.assign(context.nodeResults, subResult.context.nodeResults);
+        }
       }
 
       // 分支執行完成，結束當前分支
@@ -2258,13 +2285,31 @@ async function executeBranch(startNodeId, nodeMap, edges, context, visitedNodes 
 
 let globalExecutionContext = null;
 
+// 目前執行中流程的摘要狀態，供 popup 等 UI 查詢/顯示
+let currentExecutionStatus = null;
+
+/**
+ * 廣播目前執行狀態給 popup（外部網頁走 notifyProgress 既有機制）
+ */
+async function broadcastExecutionStatus() {
+  try {
+    await chrome.runtime.sendMessage({
+      action: 'executionStatusChanged',
+      status: currentExecutionStatus
+    });
+  } catch (e) {
+    // popup 可能已關閉，忽略錯誤
+  }
+}
+
 /**
  * 執行整個工作流程
  * @param {Object} workflow - 工作流程定義
  * @param {Object} variables - 變數
+ * @param {string} source - 觸發來源，用於狀態顯示
  * @returns {Promise<Object>} - 執行結果
  */
-async function executeWorkflow(workflow, variables) {
+async function executeWorkflow(workflow, variables, source = 'popup') {
   const nodeMap = new Map(workflow.nodes.map(n => [n.id, n]));
   const edges = workflow.edges || [];
 
@@ -2272,20 +2317,71 @@ async function executeWorkflow(workflow, variables) {
   const context = createExecutionContext(variables, 'main');
   globalExecutionContext = context;
 
+  currentExecutionStatus = {
+    source,
+    nodeCount: workflow.nodes.length,
+    startTime: Date.now(),
+    currentNodeId: null,
+    currentNodeName: null
+  };
+  broadcastExecutionStatus();
+
   // 建立匯聚點追蹤器，用於處理多分支匯聚到同一節點的情況
   const convergenceTracker = new ConvergenceTracker(edges);
 
-  // 從 start 節點開始執行
-  const result = await executeBranch('start', nodeMap, edges, context, new Set(), convergenceTracker);
+  try {
+    // 從 start 節點開始執行
+    const result = await executeBranch('start', nodeMap, edges, context, new Set(), convergenceTracker);
 
-  return {
-    success: !context.isCancelled,
-    cancelled: context.isCancelled,
-    error: context.isCancelled ? '工作流程已被取消' : undefined,
-    results: result.results,
-    nodeResults: context.nodeResults,
-    variables: context.variables
-  };
+    return {
+      success: !context.isCancelled,
+      cancelled: context.isCancelled,
+      error: context.isCancelled ? '工作流程已被取消' : undefined,
+      results: result.results,
+      nodeResults: context.nodeResults,
+      variables: context.variables,
+      outputVariables: collectOutputVariables(workflow, context.variables)
+    };
+  } finally {
+    if (globalExecutionContext === context) {
+      globalExecutionContext = null;
+    }
+    currentExecutionStatus = null;
+    broadcastExecutionStatus();
+  }
+}
+
+/**
+ * 收集工作流程中所有節點宣告的 outputVariable，並從執行後的變數表中取值
+ * 方便外部系統只擷取「節點輸出」的內容，而不必從混有輸入變數的完整 variables 中自行過濾
+ * @param {Object} workflow - 工作流程定義
+ * @param {Object} contextVariables - 執行結束後的 context.variables
+ * @returns {Object} - { [outputVariable]: value }
+ */
+function collectOutputVariables(workflow, contextVariables) {
+  const output = {};
+  for (const node of workflow.nodes || []) {
+    const outputVariable = node.parameters?.outputVariable;
+    if (outputVariable && Object.prototype.hasOwnProperty.call(contextVariables, outputVariable)) {
+      output[outputVariable] = contextVariables[outputVariable];
+    }
+  }
+  return output;
+}
+
+/**
+ * 強制取消目前正在執行的流程
+ * @returns {boolean} 是否有流程被取消
+ */
+function cancelCurrentExecution() {
+  if (!globalExecutionContext) {
+    return false;
+  }
+  globalExecutionContext.isCancelled = true;
+  if (globalExecutionContext.cancelResolve) {
+    globalExecutionContext.cancelResolve(new Error('CANCELLED'));
+  }
+  return true;
 }
 
 // 監聽來自 popup 的訊息
@@ -2293,7 +2389,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'executeWorkflow') {
     const { workflow, variables } = message;
 
-    executeWorkflow(workflow, variables)
+    executeWorkflow(workflow, variables, 'popup')
       .then(result => {
         sendResponse(result);
       })
@@ -2303,6 +2399,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 返回 true 表示會異步發送回應
     return true;
+  }
+
+  if (message.action === 'getExecutionStatus') {
+    sendResponse({ status: currentExecutionStatus });
+    return false;
+  }
+
+  if (message.action === 'cancelWorkflow') {
+    sendResponse({ cancelled: cancelCurrentExecution() });
+    return false;
   }
 });
 
@@ -2408,12 +2514,7 @@ chrome.runtime.onConnectExternal.addListener((port) => {
       }
 
       if (message.action === 'cancelWorkflow') {
-        if (globalExecutionContext) {
-          globalExecutionContext.isCancelled = true;
-          if (globalExecutionContext.cancelResolve) {
-            globalExecutionContext.cancelResolve(new Error('CANCELLED'));
-          }
-        }
+        cancelCurrentExecution();
         return;
       }
 
@@ -2430,7 +2531,7 @@ chrome.runtime.onConnectExternal.addListener((port) => {
 
         const { workflow, variables } = message;
 
-        executeWorkflow(workflow, variables)
+        executeWorkflow(workflow, variables, 'external')
           .then(result => {
             port.postMessage({ action: 'workflowComplete', result });
           })
@@ -2470,7 +2571,7 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
 
         const { workflow, variables } = message;
 
-        return executeWorkflow(workflow, variables)
+        return executeWorkflow(workflow, variables, 'external')
           .then(result => {
             sendResponse(result);
           })
